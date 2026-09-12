@@ -1,0 +1,204 @@
+# ===========================================================================
+# sovereign-rating-lab — 全局配置
+# 所有路径均为「相对于项目根目录」的相对路径，便于跨平台复现。
+# 不要把任何 API Key 写进本文件；FRED 等需要密钥的数据源请使用环境变量。
+# ===========================================================================
+
+project:
+  name: sovereign-rating-lab
+  title: 主权信用评级迁移与预测研究
+  version: 0.1.0
+
+paths:
+  raw: data/raw
+  sample: data/sample
+  interim: data/interim
+  processed: data/processed
+  cache: data/raw/cache
+  figures: reports/figures
+  tables: reports/tables
+  logs: reports/logs
+
+# ---------------------------------------------------------------------------
+# 研究样本设置
+# ---------------------------------------------------------------------------
+sample:
+  # 面板起止年份。评级历史数据在 1975 年之前非常稀疏，建议从 1990 年起。
+  start_year: 1990
+  end_year: 2023
+  # 三个主要国际评级机构
+  agencies: ["S&P", "Moody's", "Fitch"]
+  # 是否保留处于违约状态的观测（分值 1）。研究迁移时可保留，建模时通常剔除。
+  keep_default_observations: true
+
+# ---------------------------------------------------------------------------
+# 评级刻度：统一 1-21 分，分值越高信用质量越好（1 = C/D 违约）
+# ---------------------------------------------------------------------------
+rating_scale:
+  min_score: 1
+  max_score: 21
+  # 投资级门槛：BBB-/Baa3 = 12 分
+  investment_grade_threshold: 12
+  # 迁移方向判定阈值（分值差）
+  upgrade_threshold: 0
+  downgrade_threshold: 0
+  # 展望与观察状态的标准取值
+  outlook_values: ["Positive", "Negative", "Stable", "Developing"]
+  watch_values:
+    [
+      "Watch-Positive",
+      "Watch-Negative",
+      "Watch-Developing",
+      "Positive Watch",
+      "Negative Watch",
+    ]
+
+# ---------------------------------------------------------------------------
+# 建模设置
+# ---------------------------------------------------------------------------
+models:
+  random_state: 42
+  test_fraction: 0.2
+  # 时间序列交叉验证：按年切分的扩张窗口折数
+  cv:
+    n_splits: 5
+    scheme: expanding # expanding | rolling
+    min_train_years: 8
+  random_forest:
+    n_estimators: 400
+    max_depth: null
+    min_samples_leaf: 3
+    n_jobs: -1
+  xgboost:
+    n_estimators: 400
+    learning_rate: 0.05
+    max_depth: 4
+    subsample: 0.85
+    colsample_bytree: 0.85
+    reg_lambda: 1.0
+    eval_metric: mlogloss
+  shap:
+    max_samples: 500
+    n_background: 100
+
+# ---------------------------------------------------------------------------
+# 事件研究
+# ---------------------------------------------------------------------------
+event_study:
+  # 事件窗口 [-20, +20] 交易日
+  pre_window: 20
+  post_window: 20
+  # 市场模型估计窗口（相对事件日的交易日区间）
+  estimation_start: -120
+  estimation_end: -21
+  # 事件类型
+  event_types: ["downgrade", "upgrade", "outlook_change"]
+  # 目标变量（利差 / 汇率 / 股指）
+  targets: ["sovereign_spread", "fx_rate", "equity_index"]
+
+# ---------------------------------------------------------------------------
+# 数据源。所有下载结果都会缓存到 paths.cache，并记录 URL 与下载时间。
+# offline: true 时只读缓存，不发起任何网络请求。
+# ---------------------------------------------------------------------------
+data_sources:
+  offline: false
+  request_timeout: 30
+  max_retries: 3
+  user_agent: "sovereign-rating-lab/0.1 (research; contact: maintainer)"
+
+  worldbank:
+    enabled: true
+    wdi_base_url: "https://api.worldbank.org/v2/country/{countries}/indicator/{indicator}"
+    wgi_base_url: "https://api.worldbank.org/v2/country/{countries}/indicator/{indicator}"
+    per_page: 20000
+    # WDI 指标代码
+    indicators:
+      gdp_growth: "NY.GDP.MKTP.KD.ZG"
+      inflation: "FP.CPI.TOTL.ZG"
+      central_gov_debt_gdp: "GC.DOD.TOTL.GD.ZS"
+      gross_debt_gdp: "GC.DOD.TOTL.GD.ZS"
+      external_debt_gni: "DT.DOD.DECT.GN.ZS"
+      reserves_months_imports: "FI.RES.TOTL.MO"
+      reserves_usd: "FI.RES.TOTL.CD"
+      current_account_gdp: "BN.CAB.XOKA.GD.ZS"
+      exports_gdp: "NE.EXP.GNFS.ZS"
+      gdp_per_capita: "NY.GDP.PCAP.CD"
+      fx_official_rate: "PA.NUS.FCRF"
+      real_interest_rate: "FR.INR.RINR"
+    # WGI 六项治理指标（-2.5 ~ 2.5）
+    wgi_indicators:
+      voice_accountability: "VA.EST"
+      political_stability: "PV.EST"
+      government_effectiveness: "GE.EST"
+      regulatory_quality: "RQ.EST"
+      rule_of_law: "RL.EST"
+      control_corruption: "CC.EST"
+
+  imf:
+    enabled: true
+    # IMF WEO 通过 datamapper 的 SDMX-JSON 接口获取
+    weo_base_url: "https://www.imf.org/external/datamapper/api/v1"
+    indicators:
+      ngdp_rpch: "NGDP_RPCH" # 实际 GDP 增长 %
+      pcpipch: "PCPIPCH" # 通胀 %
+      ggxwdg_ngdp: "GGXWDG_NGDP" # 一般政府总债务 / GDP
+      bca_ngdp: "BCA_NGDPD" # 经常账户余额 / GDP
+      lp: "LP" # 人口
+
+  bis:
+    enabled: false
+    # BIS 统计 API（SDMX），用于跨境信贷、有效汇率、政策利率
+    base_url: "https://stats.bis.org/api/v2/data/dataflow/BIS"
+    datasets:
+      policy_rate: "WS_CBPOL_D/1.0/D.."
+      real_effective_exchange_rate: "WS_EER_D/1.0/R.."
+
+  fred:
+    enabled: false
+    # 必须自行配置：在环境变量 FRED_API_KEY 中提供，禁止硬编码。
+    api_key_env: "FRED_API_KEY"
+    base_url: "https://api.stlouisfed.org/fred/series/observations"
+    # 示例序列：主权利差 / 汇率 / 股指
+    series:
+      us_10y: "DGS10"
+      vix: "VIXCLS"
+      dxy: "DTWEXBGS"
+    # 缺少 API Key 时，脚本会跳过并给出提示，而不是报错终止。
+    required: false
+
+# ---------------------------------------------------------------------------
+# 评级数据抓取的合规设置
+# ---------------------------------------------------------------------------
+scraping:
+  # 严格遵守 robots.txt；若目标路径被禁止，脚本会拒绝抓取并说明原因。
+  respect_robots_txt: true
+  # 每次请求之间的最小间隔（秒），避免对目标站点造成压力。
+  min_delay_seconds: 2.0
+  # 原始 HTML 缓存目录
+  cache_dir: data/raw/cache/html
+  # 抓取来源登记表（记录 URL、抓取时间、robots 判定结果）
+  provenance_file: data/raw/cache/provenance.json
+  # 默认允许抓取的公开来源（用户需自行确认使用权限）
+  sources:
+    - name: "rating_agency_public_page"
+      url: "https://example.com/ratings"
+      selector: "table.ratings"
+      enabled: false # 默认关闭：请用户确认版权许可后再启用
+
+# ---------------------------------------------------------------------------
+# 可视化与输出
+# ---------------------------------------------------------------------------
+visualization:
+  theme: "light"
+  figure_format: "png"
+  dpi: 150
+  figsize: [10, 6]
+  # 中国习惯：涨/改善 = 红，跌/恶化 = 绿
+  color_upgrade: "#C0392B"
+  color_downgrade: "#1E8449"
+  color_neutral: "#7F8C8D"
+  palette: "RdYlGn_r"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"

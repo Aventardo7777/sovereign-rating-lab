@@ -1,0 +1,58 @@
+cff-version: 1.2.0
+message: "If you use this software in academic work, please cite it as below."
+title: "sovereign-rating-lab: Sovereign Credit Rating Migration and Prediction Lab"
+abstract: >-
+  An open, reproducible research toolkit for sovereign credit rating analysis.
+  It builds country-year-agency rating panels on a unified 1-21 rating scale,
+  estimates annual rating migration matrices and upgrade/downgrade
+  probabilities, studies macroeconomic drivers with panel fixed-effects models
+  and clustered standard errors, trains ordinal Logit/Probit, random forest and
+  XGBoost forecasting models under time-series cross-validation with SHAP
+  explanations, and provides an event-study framework for sovereign spreads,
+  exchange rates and equity indices. Ships with a Streamlit dashboard,
+  reproducible reports, and a CI pipeline.
+type: software
+authors:
+  - family-names: Liu
+    given-names: Jietao
+    email: "176105827+Aventardo7777@users.noreply.github.com"
+  - family-names: "sovereign-rating-lab contributors"
+repository-code: "https://github.com/Aventardo7777/sovereign-rating-lab"
+url: "https://github.com/Aventardo7777/sovereign-rating-lab"
+license: MIT
+license-url: "https://github.com/Aventardo7777/sovereign-rating-lab/blob/main/LICENSE"
+version: 0.1.0
+date-released: "2026-09-12"
+keywords:
+  - sovereign credit rating
+  - rating migration
+  - transition matrix
+  - credit risk
+  - macroeconomic drivers
+  - panel data
+  - fixed effects
+  - ordinal regression
+  - XGBoost
+  - SHAP
+  - event study
+  - reproducible research
+identifiers:
+  - type: url
+    value: "https://github.com/Aventardo7777/sovereign-rating-lab"
+    description: "Project repository"
+references:
+  - type: software
+    title: "World Bank Open Data (World Development Indicators)"
+    authors:
+      - name: "World Bank"
+    url: "https://data.worldbank.org"
+  - type: software
+    title: "Worldwide Governance Indicators"
+    authors:
+      - name: "World Bank"
+    url: "https://info.worldbank.org/governance/wgi/"
+  - type: software
+    title: "IMF World Economic Outlook"
+    authors:
+      - name: "International Monetary Fund"
+    url: "https://www.imf.org/en/Publications/WEO"
